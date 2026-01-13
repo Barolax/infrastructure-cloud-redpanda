@@ -1,0 +1,62 @@
+services:
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - "1G"
+      - --reserve-memory
+      - "0M"
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+  producer:
+    build: ./producer
+    depends_on:
+      - redpanda
+    environment:
+      BROKER: redpanda:9092
+      TOPIC: client_tickets
+      MSG_BYTES: "10240"
+      TARGET_GB_MONTH: "1"
+      SPEEDUP: "10000"
+    command: ["python", "producer.py"]
+  console:
+    image: redpandadata/console:latest
+    container_name: redpanda-console
+    depends_on:
+      - redpanda
+    ports:
+      - "8080:8080"
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:9092"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+  consumer:  #
+    build: ./consumer
+    depends_on:
+      - redpanda
+      - producer
+    volumes:
+      - ./output:/output  # Récup en local des fichiers 
+    environment:
+      SPARK_NO_DAEMONIZE: "true"

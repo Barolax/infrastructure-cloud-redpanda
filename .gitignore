@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+
+# Data
+*.csv
+*.parquet
+data/
+
+# OS
+.DS_Store
+
+#Ignore output directory 
+output/
